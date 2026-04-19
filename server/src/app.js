@@ -46,10 +46,17 @@ export function createApp() {
     return res.send(renderPrometheusMetrics());
   });
 
+  // Mount routes
   app.use("/api/v1", apiRoutes);
   app.use("/api", apiRoutes);
+
+  // Error handling
   app.use(notFoundHandler);
   app.use(errorHandler);
 
   return app;
 }
+
+// CRITICAL: Initialize and export the app instance for Vercel/Production
+const app = createApp();
+export default app;
