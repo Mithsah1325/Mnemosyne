@@ -1,0 +1,22 @@
+# Node modules
+**/node_modules/
+
+.env
+.env.example
+
+# Build output
+client/dist/
+
+# Environment files
+server/.env
+client/.env
+
+# Logs
+*.log
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Runtime artifacts
+*.pid

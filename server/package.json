@@ -1,0 +1,23 @@
+{
+  "name": "mnemosyne-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jose": "^5.9.6",
+    "node-fetch": "^3.3.2",
+    "pino": "^9.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1"
+  }
+}
