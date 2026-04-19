@@ -72,6 +72,7 @@ function CallInterface({ onSystemStatusChange }) {
   const [speechState, setSpeechState] = useState("idle");
   const [audioLevels, setAudioLevels] = useState(DEFAULT_AUDIO_LEVELS);
   const [confusionSignals, setConfusionSignals] = useState(0);
+  const [micErrorMessage, setMicErrorMessage] = useState("");
 
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -387,6 +388,7 @@ function CallInterface({ onSystemStatusChange }) {
     if (!navigator?.mediaDevices?.getUserMedia) {
       setMicPermission("unsupported");
       setOnAir(false);
+      setMicErrorMessage("This browser does not support live microphone capture.");
       setErrorText("This browser does not support live microphone capture.");
       return;
     }
@@ -395,6 +397,17 @@ function CallInterface({ onSystemStatusChange }) {
       return;
     }
 
+    if (!window.isSecureContext && window.location.hostname !== "localhost") {
+      setMicPermission("insecure");
+      setOnAir(false);
+      setMicErrorMessage("Microphone access requires localhost or HTTPS. Open the app on a secure origin and retry.");
+      setErrorText("Microphone access requires localhost or HTTPS. Open the app on a secure origin and retry.");
+      return;
+    }
+
+    setMicPermission("requesting");
+    setMicErrorMessage("");
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -402,11 +415,30 @@ function CallInterface({ onSystemStatusChange }) {
       setOnAir(true);
       beginAudioMonitoring(stream);
       startSpeechRecognition();
-    } catch (_error) {
+    } catch (error) {
       setMicPermission("denied");
       setOnAir(false);
-      setErrorText("Microphone permission is blocked. Enable it to use live speech features.");
+      const reason = error?.name || error?.message || "Permission denied";
+      const message =
+        reason === "NotAllowedError"
+          ? "Microphone permission was blocked by the browser. Use the lock icon in the address bar or browser settings to allow it, then retry."
+          : reason === "NotFoundError"
+            ? "No microphone device was found on this computer."
+            : reason === "NotReadableError"
+              ? "The microphone is already in use by another app or tab."
+              : "Microphone access failed. Check browser permissions and try again.";
+
+      setMicErrorMessage(message);
+      setErrorText(message);
     }
+  };
+
+  const retryMicrophoneAccess = async () => {
+    setErrorText("");
+    setMicErrorMessage("");
+    setMicPermission("pending");
+    stopRecording();
+    await startRecording();
   };
 
   const stopRecording = () => {
@@ -440,6 +472,12 @@ function CallInterface({ onSystemStatusChange }) {
     refreshComplianceCertificate();
     refreshGatewayLatency();
   }, [patientId, canCallProtectedApi, oidcConfigured]);
+
+  useEffect(() => {
+    if (user && (micPermission === "denied" || micPermission === "insecure")) {
+      retryMicrophoneAccess();
+    }
+  }, [user]);
 
   useEffect(() => {
     const probe = setInterval(refreshGatewayLatency, 15000);
@@ -655,6 +693,12 @@ function CallInterface({ onSystemStatusChange }) {
           <p className="metric-label">
             Mic: {micPermission === "granted" ? "Connected" : micPermission === "pending" ? "Requesting" : micPermission} | Speech: {speechState}
           </p>
+          {micErrorMessage ? <p className="alert">{micErrorMessage}</p> : null}
+          {micPermission !== "granted" ? (
+            <button type="button" onClick={retryMicrophoneAccess}>
+              Retry Microphone
+            </button>
+          ) : null}
 
           <details>
             <summary>How the microphone is used in this terminal</summary>
